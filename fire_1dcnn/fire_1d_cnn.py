@@ -1,7 +1,6 @@
 #参考博客
 #https://blog.goodaudience.com/introduction-to-1d-convolutional-neural-networks-in-keras-for-time-sequences-3a7ff801a2cf
 #https://towardsdatascience.com/human-activity-recognition-har-tutorial-with-keras-and-core-ml-part-1-8c05e365dfa0
-#Version 1.0
 #Compatibility layer between Python 2 and Python 3
 from __future__ import print_function
 from matplotlib import pyplot as plt
@@ -84,10 +83,10 @@ def read_data(file_path):
     column_names = ['user-id',
                     'activity',
                     'timestamp',  #时间戳
-                   # 'co',
+                   # 'co',        #以下三个表头为卡尔曼滤波前的数据
                    # 'smog',
                    # 't',
-                    'co-fli',
+                    'co-fli',     #以下三个表头为卡尔曼滤波后的数据
                     'smog-fli',
                     't-fli'
                     ]
@@ -96,12 +95,14 @@ def read_data(file_path):
                      names=column_names)
                     #name 添加表头
     # Last column has a ";" character which must be removed ...
+    # 去除原始数据中每一行后面的‘;’
+    # 替换操作，将‘z-axis’中后的;去掉。
+    # inplace=True：改变原数据而不是改变副本的数据  regex=True：正则替换
     df['t-fli'].replace(regex=True,
       inplace=True,
       to_replace=r';',
       value=r'')
-    #替换操作，将‘z-axis’中后的;去掉。
-    # inplace=True：改变原数据而不是改变副本的数据  regex=True：正则替换
+    
     # ... and then this column must be transformed to float explicitly
     df['t-fli'] = df['t-fli'].apply(convert_to_float)
     # This is very important otherwise the model will not fit and loss
@@ -201,7 +202,7 @@ sns.set() # Default seaborn look and feel
 plt.style.use('ggplot')
 print('keras version ', keras.__version__)
 
-#整个数据集中，所有的数据标签
+#整个数据所有的数据标签
 LABELS = ["fire",
           "nofire",
           ]
@@ -265,9 +266,6 @@ df_train = df[df['user-id'] <= 1]
 
 
 # Normalize features for training data set
-#**************
-#**************
-#**************
 df_train['co-fli'] = feature_normalize(df['co-fli'])  #自定义函数  数据规范化
 df_train['smog-fli'] = feature_normalize(df['smog-fli'])
 df_train['t-fli'] = feature_normalize(df['t-fli'])
@@ -284,13 +282,14 @@ x_train, y_train = create_segments_and_labels(df_train,
 
 # %%
 
+
 print("\n--- Reshape data to be accepted by Keras ---\n")
 
-# Inspect x data
+
 print('x_train shape: ', x_train.shape)
-# Displays (20869, 40, 3)
+
 print(x_train.shape[0], 'training samples')
-# Displays 20869 train samples
+
 
 # Inspect y dataq
 print('y_train shape: ', y_train.shape)
@@ -446,6 +445,7 @@ y_test = y_test.astype("float32")
 
 y_test = np_utils.to_categorical(y_test, num_classes)
 
+#调用评估函数测试测试集数据的准确度
 score = model_m.evaluate(x_test, y_test, verbose=1)
 
 #测试集的参数（accuracy，loss）的显示
