@@ -103,6 +103,7 @@ def read_data(file_path):
       to_replace=r';',
       value=r'')
     
+    
     # ... and then this column must be transformed to float explicitly
     df['t-fli'] = df['t-fli'].apply(convert_to_float)
     # This is very important otherwise the model will not fit and loss
