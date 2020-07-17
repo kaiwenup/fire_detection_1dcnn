@@ -81,17 +81,17 @@ def read_data(file_path):
     """
 
     column_names = ['user-id',
-                    'activity',
-                    'timestamp',  #时间戳
-                   # 'co',        #以下三个表头为卡尔曼滤波前的数据
+                    'activity',   # 标签
+                    'timestamp',  # 时间戳
+                   # 'co',        # 以下三个表头为卡尔曼滤波前的数据
                    # 'smog',
                    # 't',
-                    'co-fli',     #以下三个表头为卡尔曼滤波后的数据
+                    'co-fli',     # 以下三个表头为卡尔曼滤波后的数据
                     'smog-fli',
                     't-fli'
                     ]
     df = pd.read_csv(file_path,
-                     header=None, #指定行数用来作为列名，数据开始行数。如果文件中没有列名，则默认为0，否则设置为None。
+                     header=None, # 指定行数用来作为列名，数据开始行数。如果文件中没有列名，则默认为0，否则设置为None。
                      names=column_names)
                     #name 添加表头
     # Last column has a ";" character which must be removed ...
@@ -170,7 +170,7 @@ def create_segments_and_labels(df, time_steps, step, label_name):
         labels:
     """
 
-    # x, y, z acceleration as features
+    # 传入传感器的个数
     N_FEATURES = 3
     # Number of steps to advance in each iteration (for me, it should always
     # be equal to the time_steps in order to have no overlap between segments)
@@ -210,11 +210,11 @@ LABELS = ["fire",
 
 
 # The number of steps within one time segment
-#sliding window 的长度
+# one time segment的长度,因为只有三个传感器的值，所以宽度固定为3
 TIME_PERIODS = 80
 # The steps to take from one segment to the next; if this value is equal to
 # TIME_PERIODS, then there is no overlap between the segments
-#sliding window 每次移动的步长
+# time segment 每次移动的步长
 STEP_DISTANCE = 40
 
 # %%
@@ -222,27 +222,33 @@ STEP_DISTANCE = 40
 print("\n--- Load, inspect and transform data ---\n")
 
 # Load data set containing all the data from csv
+# 读取原始数据
 df = read_data('fire_data/fire_data_raw.txt')
 
 
 # Describe the data
-#图表显示
+# 图表显示
+# 原始数据 图表/数值 显示开关 dis_switch
 
-show_basic_dataframe_info(df, 20)
+dis_switch = False
 
-df['activity'].value_counts().plot(kind='bar',
-                                   title='Training Examples by Activity Type')
+if dis_switch:
+    show_basic_dataframe_info(df, 20)
 
-plt.show()
+    df['activity'].value_counts().plot(kind='bar',
+                                    title='Training Examples by Activity Type')
 
-df['user-id'].value_counts().plot(kind='bar',
-                                  title='Training Examples by User')
-plt.show()
+    plt.show()
+
+    df['user-id'].value_counts().plot(kind='bar',
+                                    title='Training Examples by User')
+    plt.show()
 
 for activity in np.unique(df["activity"]):   #对六个行为进行遍历，并显示出部分特征数据
     #subset = df[df["activity"] == activity][:180]  #原数据是20hz采样频率，所以显示180个数据也就是显示了9s的数据（1/20 × 180 = 9）
     subset = df[df["activity"] == activity][:550]
-    plot_activity(activity, subset) #自己定义的画图函数
+    if dis_switch:
+        plot_activity(activity, subset) #自己定义的画图函数
 
 # Define column name of the label vector
 LABEL = "ActivityEncoded"
@@ -329,7 +335,7 @@ y_train = y_train.astype("float32")
 # 待定，可能是x_train转换完成之后，y_train也要完成相应的转换
 y_train = np_utils.to_categorical(y_train, num_classes)
 print('New y_train shape: ', y_train.shape)
-# (4173, 6)
+
 
 # %%
 
@@ -338,34 +344,38 @@ print('New y_train shape: ', y_train.shape)
 print("\n--- Create neural network model ---\n")
 
 # 1D CNN neural network
-#运用Keras一维卷积实现
+# 运用Keras一维卷积实现
 model_m = Sequential()
-#输入数据（待定）
+# 输入数据（待定）
 model_m.add(Reshape((TIME_PERIODS, num_sensors), input_shape=(input_shape,)))
-#第一次卷积层 输入矩阵大小：80×3  filter size 10  输出矩阵大小：71×100
+# 第一次卷积层 输入矩阵大小：80×3 输出矩阵大小：71×100
+# kernel/patch size:10 filter size:100
 model_m.add(Conv1D(100, 10, activation='relu', input_shape=(TIME_PERIODS, num_sensors)))
-#第二次卷积层  输入矩阵大小：71×100 filter size 10  输出矩阵大小：62×100
+# 第二次卷积层  输入矩阵大小：71×100 输出矩阵大小：62×100
+# kernel/patch size:10 filter size:100
 model_m.add(Conv1D(100, 10, activation='relu'))
-#最大值池化层 输入矩阵大小：62×100 stride size（步长）：3
-#输出矩阵：20×100
+# 最大值池化层 输入矩阵大小：62×100 stride size（步长）：3
+# 输出矩阵：20×100
 model_m.add(MaxPooling1D(3))
-#第三次卷积&第四次卷积  输出2×160
+# 第三次卷积 输入矩阵大小：20×160 输出11×160
+# kernel/patch size:10 filter size:160 
 model_m.add(Conv1D(160, 10, activation='relu'))
+# 第四次卷积 输入矩阵大小：11×160 输出2×160
 model_m.add(Conv1D(160, 10, activation='relu'))
-#平均值池化层  输出1×160
+# 平均值池化层  输出1×160
 model_m.add(GlobalAveragePooling1D())
-#Dropout
-#为减少过度拟合，部分数据被随机置0,在这里设置的为0.5（50%的数据被随机置0）
+# Dropout层
+# 为减少过度拟合，部分数据被随机置0,在这里设置的为0.5（50%的数据被随机置0）
 model_m.add(Dropout(0.5))
-#fully connected layer
-#使用softmax的激励函数
-#输入1×160 输出1×6
+# fully connected layer
+# 使用softmax的激励函数
+# 输入1×160 输出1×6
 model_m.add(Dense(num_classes, activation='softmax'))
+
 print(model_m.summary())
-# Accuracy on training data: 99%
-# Accuracy on test data: 91%
-
-
+# Display:
+# Accuracy on training data
+# Accuracy on test data
 
 # %%
 
@@ -374,6 +384,8 @@ print("\n--- Fit the model ---\n")
 # The EarlyStopping callback monitors training accuracy:
 # if it fails to improve for two consecutive epochs,
 # training stops early
+# 存放神经网络训练模型的文件（即后缀名为.h5的文件，放在该目录下的h5文件夹），
+# 生成好的模型其他文件可以直接调用，而不用再次进行用神经网络进行训练
 callbacks_list = [
     keras.callbacks.ModelCheckpoint(
         filepath='h5/best_model.{epoch:02d}-{val_loss:.2f}.h5',
@@ -385,12 +397,13 @@ model_m.compile(loss='categorical_crossentropy',
                 optimizer='adam', metrics=['accuracy'])
 
 # Hyper-parameters
-#待定  400 records  400个二维80×3二维矩阵的数据
+#每个batch的大小，也就是说每一个batch里面有400个传感器检测数据
 BATCH_SIZE = 400
-#训练次数
+#训练次数,全部数据经过神经网络的遍数
 EPOCHS = 10
 
 # Enable validation to use ModelCheckpoint and EarlyStopping callbacks.
+# model_m.fit():调用该函数，神经网络开始训练，前面只是将所有参数都设置好。
 history = model_m.fit(x_train,
                       y_train,
                       batch_size=BATCH_SIZE,
@@ -408,10 +421,12 @@ print("\n--- Learning curve of model training ---\n")
 # summarize history for accuracy and loss
 #训练集数据相关参数显示
 plt.figure(figsize=(6, 4))
-#plt.plot(history.history['acc'], "g--", label="Accuracy of training data")
+
+#plt.plot(history.history['acc'], "g--", label="Accuracy of training data")         # 版本不同传入不同的参数
 #plt.plot(history.history['val_acc'], "g", label="Accuracy of validation data")
 plt.plot(history.history['accuracy'], "g--", label="Accuracy of training data")
 plt.plot(history.history['val_accuracy'], "g", label="Accuracy of validation data")
+
 plt.plot(history.history['loss'], "r--", label="Loss of training data")
 plt.plot(history.history['val_loss'], "r", label="Loss of validation data")
 plt.title('Model Accuracy and Loss')
@@ -426,7 +441,8 @@ plt.show()
 print("\n--- Check against test data ---\n")
 
 # Normalize features for training data set
-#神经网络已经训练好，接下来是拿测试集进行测试。
+# 神经网络已经训练好，接下来是拿测试集进行测试。
+# 测试集的数据处理，类似训练集
 df_test['co-fli'] = feature_normalize(df_test['co-fli'])
 df_test['smog-fli'] = feature_normalize(df_test['smog-fli'])
 df_test['t-fli'] = feature_normalize(df_test['t-fli'])
