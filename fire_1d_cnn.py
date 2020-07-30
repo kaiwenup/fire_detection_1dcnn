@@ -21,11 +21,15 @@ from keras.utils import np_utils
 
 
 # %%
-#规范化数据
+
+# 规范化数据：使各个数据处于同一量级
+# 中心化（又叫零均值化）：是指变量减去它的均值。其实就是一个平移的过程，平移后所有数据的中心是（0，0）
+# 标准化（又叫归一化）： 是指数值减去均值，再除以标准差。
+
 def feature_normalize(dataset):
 
-    mu = np.mean(dataset, axis=0)
-    sigma = np.std(dataset, axis=0)
+    mu = np.mean(dataset, axis=0)   # axis = 0:压缩行，对各列求均值，返回 1* n 矩阵
+    sigma = np.std(dataset, axis=0) # axis = 0:计算每一列的标准差  
     return (dataset - mu)/sigma
 
 #显示 confusion matrix
@@ -122,14 +126,14 @@ def convert_to_float(x):
     except:
         return np.nan
 
-
+'''
 # Not used right now
 def feature_normalize(dataset):
 
     mu = np.mean(dataset, axis=0)
     sigma = np.std(dataset, axis=0)
     return (dataset - mu)/sigma
-
+'''
 #图表显示
 def plot_axis(ax, x, y, title):
 
@@ -230,7 +234,7 @@ df = read_data('fire_data/fire_data_raw.txt')
 # 图表显示
 # 原始数据 图表/数值 显示开关 dis_switch
 
-dis_switch = False
+dis_switch = True
 
 if dis_switch:
     show_basic_dataframe_info(df, 20)
@@ -244,7 +248,7 @@ if dis_switch:
                                     title='Training Examples by User')
     plt.show()
 
-for activity in np.unique(df["activity"]):   #对六个行为进行遍历，并显示出部分特征数据
+for activity in np.unique(df["activity"]):   #显示有无火灾的两种情形的部分特征数据
     #subset = df[df["activity"] == activity][:180]  #原数据是20hz采样频率，所以显示180个数据也就是显示了9s的数据（1/20 × 180 = 9）
     subset = df[df["activity"] == activity][:550]
     if dis_switch:
