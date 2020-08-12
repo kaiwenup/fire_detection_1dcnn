@@ -239,6 +239,8 @@ dis_switch = True
 if dis_switch:
     show_basic_dataframe_info(df, 20)
 
+    # 柱状图显示
+
     df['activity'].value_counts().plot(kind='bar',
                                     title='Training Examples by Activity Type')
 
@@ -250,7 +252,7 @@ if dis_switch:
 
 for activity in np.unique(df["activity"]):   #显示有无火灾的两种情形的部分特征数据
     #subset = df[df["activity"] == activity][:180]  #原数据是20hz采样频率，所以显示180个数据也就是显示了9s的数据（1/20 × 180 = 9）
-    subset = df[df["activity"] == activity][:550]
+    subset = df[df["activity"] == activity][:550]   #550:为显示前550个数据
     if dis_switch:
         plot_activity(activity, subset) #自己定义的画图函数
 
@@ -319,7 +321,7 @@ print(list(le.classes_))
 # cannot be read in with the current version of coreml (see also reshape
 # layer as the first layer in the keras model)
 # keras不支持多维矩阵的输入，所以要将80×3的二维矩阵转化为长度为240的一维矩阵
-input_shape = (num_time_periods*num_sensors)  #80×3
+input_shape = (num_time_periods*num_sensors)  # 80×3
 x_train = x_train.reshape(x_train.shape[0], input_shape)
 
 
@@ -404,7 +406,7 @@ model_m.compile(loss='categorical_crossentropy',
 #每个batch的大小，也就是说每一个batch里面有400个传感器检测数据
 BATCH_SIZE = 400
 #训练次数,全部数据经过神经网络的遍数
-EPOCHS = 10
+EPOCHS = 50
 
 # Enable validation to use ModelCheckpoint and EarlyStopping callbacks.
 # model_m.fit():调用该函数，神经网络开始训练，前面只是将所有参数都设置好。
