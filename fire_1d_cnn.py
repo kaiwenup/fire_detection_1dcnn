@@ -267,8 +267,6 @@ df[LABEL] = le.fit_transform(df["activity"].values.ravel())
 
 # %%
 
-
-
 print("\n--- Reshape the data into segments ---\n")
 
 # Differentiate between test set and training set
